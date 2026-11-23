@@ -1,0 +1,35 @@
+name: vnpt_kyc_plugin
+description: Flutter plugin eKYC VNPT (SDK 2.0) - quét CCCD, xác thực khuôn mặt 3D, OCR và liveness.
+version: 1.0.0
+# Không publish lên pub.dev: plugin kèm binary SDK của VNPT. Phân phối qua git.
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  camera: ^0.11.0+2
+  crypto: ^3.0.3
+  http: ^1.2.2
+  http_parser: ^4.0.2
+  image: ^4.3.0
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  pigeon: ^22.7.2
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.vnpt.vnpt_kyc_plugin
+        pluginClass: VnptKycPlugin
+      ios:
+        pluginClass: VnptKycPlugin

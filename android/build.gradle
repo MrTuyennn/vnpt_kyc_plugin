@@ -1,0 +1,53 @@
+group = "com.vnpt.vnpt_kyc_plugin"
+version = "1.0-SNAPSHOT"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+def vnptSdkLibDir = file("libs")
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        flatDir { dirs vnptSdkLibDir }
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+android {
+    namespace = "com.vnpt.vnpt_kyc_plugin"
+    compileSdk = 34
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_11.toString()
+    }
+
+    defaultConfig {
+        minSdk = 24
+    }
+
+    packaging {
+        jniLibs {
+            pickFirsts += ["**/libc++_shared.so", "**/libekyc-native-full.so"]
+        }
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+    implementation("androidx.constraintlayout:constraintlayout:2.0.4")
+    implementation("com.airbnb.android:lottie:5.0.1")
+    api(name: "ekyc_sdk-release-v3.7.4", ext: "aar")
+}
