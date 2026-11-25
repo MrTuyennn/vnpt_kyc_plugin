@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 import 'package:path/path.dart' as p;
 import 'package:vnpt_kyc_plugin/src/api/ekyc_file_limits.dart';
 import 'package:vnpt_kyc_plugin/src/flow/scan_results.dart';
@@ -180,6 +181,23 @@ class EkycProxyClient {
 
   // ---- API đơn lẻ ----------------------------------------------------------
 
+  /// Content type theo đuôi file (không phân biệt hoa thường). Không khai báo
+  /// thì `package:http` mặc định `application/octet-stream` và server từ chối
+  /// ảnh với `FILE_CONTENT_TYPE_NOT_ALLOWED`.
+  static MediaType _contentTypeFor(String path) {
+    switch (p.extension(path).toLowerCase()) {
+      case '.jpg':
+      case '.jpeg':
+        return MediaType('image', 'jpeg');
+      case '.png':
+        return MediaType('image', 'png');
+      case '.pdf':
+        return MediaType('application', 'pdf');
+      default:
+        return MediaType('application', 'octet-stream');
+    }
+  }
+
   /// `POST file-service/v1/addFile` → `hash`.
   Future<String> addFile(
     String path, {
@@ -203,8 +221,12 @@ class EkycProxyClient {
       ..fields['title'] = title ?? stem
       ..fields['description'] = description ?? stem
       ..fields['challengeCode'] = session.sessionId
-      ..files
-          .add(await http.MultipartFile.fromPath('file', path, filename: name));
+      ..files.add(await http.MultipartFile.fromPath(
+        'file',
+        path,
+        filename: name,
+        contentType: _contentTypeFor(path),
+      ));
     final object = _object(await _send(req));
     return object['hash'] as String? ?? '';
   }

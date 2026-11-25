@@ -27,6 +27,16 @@ const _session = EkycProxySession(
   baseUrl: 'https://host/api/v1/ekyc-proxy',
 );
 
+/// Content-Type của part `file` trong body multipart.
+String _fileContentType(http.BaseRequest req) {
+  final body = latin1.decode((req as http.Request).bodyBytes);
+  final m = RegExp(
+          r'content-type: ([^\r\n]+)\r\ncontent-disposition: [^\r\n]*name="file"',
+          caseSensitive: false)
+      .firstMatch(body);
+  return m?.group(1) ?? '';
+}
+
 EkycProxyClient _client(MockClient mock) =>
     EkycProxyClient(session: _session, deviceId: 'dev', httpClient: mock);
 
@@ -36,14 +46,20 @@ void main() {
 
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('proxy_test_');
-    for (final n in ['far', 'near', 'scan.3dobj']) {
+    for (final n in [
+      'far.jpg',
+      'near.jpg',
+      'scan.3dobj',
+      'up.JPEG',
+      'up.png'
+    ]) {
       await File('${dir.path}/$n').writeAsBytes([1, 2, 3]);
     }
     scan = FaceScanResult(
-      farImagePath: '${dir.path}/far',
-      farCropPath: '${dir.path}/far',
-      nearImagePath: '${dir.path}/near',
-      nearCropPath: '${dir.path}/near',
+      farImagePath: '${dir.path}/far.jpg',
+      farCropPath: '${dir.path}/far.jpg',
+      nearImagePath: '${dir.path}/near.jpg',
+      nearCropPath: '${dir.path}/near.jpg',
       scan3dPath: '${dir.path}/scan.3dobj',
       faceLogPath: null,
       sessionDir: dir.path,
@@ -63,9 +79,13 @@ void main() {
 
   test('verifyFace: upload 3 file → liveness → compare, header đúng', () async {
     final calls = <String>[];
+    final fileTypes = <String>[];
     var hashN = 0;
     final client = _client(MockClient((req) async {
       calls.add(req.url.path);
+      if (req.url.path.endsWith('addFile')) {
+        fileTypes.add(_fileContentType(req));
+      }
       expect(req.headers['X-Ekyc-Session-Token'], 'tok');
       expect(req.headers['Authorization'], 'Bearer tok');
       expect(req.headers['mac-address'], 'dev');
@@ -84,9 +104,27 @@ void main() {
     }));
     final r = await client.verifyFace(scan, frontHash: 'front');
     expect(calls.where((c) => c.endsWith('addFile')).length, 3);
+    expect(fileTypes, ['image/jpeg', 'image/jpeg', 'application/octet-stream']);
     expect(r.liveness.isLive, isTrue);
     expect(r.compare!.isMatch, isTrue);
     expect(r.faceHash, 'h2');
+  });
+
+  test('addFile: content type theo đuôi file', () async {
+    final types = <String>[];
+    final client = _client(MockClient((req) async {
+      types.add(_fileContentType(req));
+      return _ok({'hash': 'h'});
+    }));
+    for (final n in ['far.jpg', 'up.JPEG', 'up.png', 'scan.3dobj']) {
+      await client.addFile('${dir.path}/$n');
+    }
+    expect(types, [
+      'image/jpeg',
+      'image/jpeg',
+      'image/png',
+      'application/octet-stream',
+    ]);
   });
 
   test('verifyFace: fake_liveness → spoofDetected', () async {
@@ -117,8 +155,8 @@ void main() {
     final client = _client(MockClient((_) async => _ok({})));
     expect(
       () => client.parseObject({'code': 'SESSION_NOT_ACTIVE', 'message': 'x'}),
-      throwsA(isA<EkycProxyException>().having(
-          (e) => e.code, 'code', EkycProxyException.sessionNotActive)),
+      throwsA(isA<EkycProxyException>()
+          .having((e) => e.code, 'code', EkycProxyException.sessionNotActive)),
     );
     expect(
       () => client.parseObject({
@@ -146,9 +184,13 @@ void main() {
   test('verifyCardSide mặt trước: addFile → ocr/front → card/liveness',
       () async {
     final paths = <String>[];
+    final fileTypes = <String>[];
     final client = _client(MockClient((req) async {
       paths.add(req.url.path);
-      if (req.url.path.endsWith('addFile')) return _ok({'hash': 'hc'});
+      if (req.url.path.endsWith('addFile')) {
+        fileTypes.add(_fileContentType(req));
+        return _ok({'hash': 'hc'});
+      }
       if (req.url.path.endsWith('card/liveness')) {
         return _ok({'liveness': 'success'});
       }
@@ -166,6 +208,7 @@ void main() {
     );
     final r = await client.verifyCardSide(card);
     expect(r.ocr['id'], '0123');
+    expect(fileTypes, ['image/jpeg']);
     expect(paths.last, endsWith('card/liveness'));
   });
 
@@ -174,8 +217,8 @@ void main() {
         (_) async => _ok({'liveness': 'failure', 'liveness_msg': 'fake'})));
     expect(
       client.checkCardLiveness('h'),
-      throwsA(isA<EkycProxyException>().having(
-          (e) => e.code, 'code', EkycProxyException.cardNotGenuine)),
+      throwsA(isA<EkycProxyException>()
+          .having((e) => e.code, 'code', EkycProxyException.cardNotGenuine)),
     );
   });
 }

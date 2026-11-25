@@ -37,19 +37,19 @@ class _Server {
         if (path.endsWith('/addFile')) {
           return http.Response('{"object":{"hash":"h$calls"}}', 200);
         }
-        if (path.endsWith('/ocr/id')) return http.Response(_ocr, 200, headers: _utf8);
+        if (path.endsWith('/ocr/id'))
+          return http.Response(_ocr, 200, headers: _utf8);
         return http.Response(liveness, 200, headers: _utf8);
       });
 }
 
-EkycConfig _config() => EkycConfig(
-    accessToken: 'eyJabc', tokenId: 'id', tokenKey: 'key');
+EkycConfig _config() =>
+    EkycConfig(accessToken: 'eyJabc', tokenId: 'id', tokenKey: 'key');
 
-EkycCore _core(_Server server, {EkycNativeEngine? engine}) =>
-    EkycCore(
-        engine: engine ?? _CardEngine(),
-        deviceApi: _Device(),
-        httpClient: server.client);
+EkycCore _core(_Server server, {EkycNativeEngine? engine}) => EkycCore(
+    engine: engine ?? _CardEngine(),
+    deviceApi: _Device(),
+    httpClient: server.client);
 
 class _CardEngine extends EkycNativeEngine {
   int quality = 27;
@@ -126,8 +126,7 @@ void main() {
       final directory = await Directory.systemTemp.createTemp();
       addTearDown(() => directory.delete(recursive: true));
       final files = await _artifacts(directory, scan: 'scan|capture');
-      final server =
-          _Server('{"message":"IDG-00000000","object":$decision}');
+      final server = _Server('{"message":"IDG-00000000","object":$decision}');
       final core = _core(server);
       await core.configure(_config());
       final result = await core.runFullIdentityFromPaths(files.toPaths());

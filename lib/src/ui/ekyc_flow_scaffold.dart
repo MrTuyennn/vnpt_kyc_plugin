@@ -26,7 +26,8 @@ class EkycFlowScaffold extends StatelessWidget {
           if (subtitle != null)
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(subtitle!, style: Theme.of(context).textTheme.titleMedium),
+              child: Text(subtitle!,
+                  style: Theme.of(context).textTheme.titleMedium),
             ),
           if (error != null)
             Material(

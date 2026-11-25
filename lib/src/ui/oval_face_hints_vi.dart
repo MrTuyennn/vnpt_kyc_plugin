@@ -3,8 +3,7 @@ import 'package:vnpt_kyc_plugin/src/platform/platform.dart';
 
 import 'package:vnpt_kyc_plugin/src/ui/oval_ux_models.dart';
 
-String faceOvalInstruction(
-    EkycStrings s, OvalPhaseUi phase, int modeFaceOval) {
+String faceOvalInstruction(EkycStrings s, OvalPhaseUi phase, int modeFaceOval) {
   return switch (phase) {
     OvalPhaseUi.far => modeFaceOval == 0 ? s.ovalStepFar : s.ovalFar,
     OvalPhaseUi.near ||
@@ -17,7 +16,8 @@ String faceOvalInstruction(
 String faceOvalAction(EkycStrings s, int code,
     {required int stable, required int stableRequired}) {
   return switch (code) {
-    MessageResult.fit => stable >= stableRequired ? s.ovalCapturing : s.ovalHoldStill,
+    MessageResult.fit =>
+      stable >= stableRequired ? s.ovalCapturing : s.ovalHoldStill,
     MessageResult.tooFar => s.ovalCloser,
     MessageResult.tooNear => s.ovalFurther,
     MessageResult.notStraight => s.ovalLookStraight,

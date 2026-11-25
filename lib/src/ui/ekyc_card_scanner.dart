@@ -126,7 +126,8 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
       final remaining = 1000 - (_previewClock.elapsedMilliseconds - frameMs);
       final ready = valid && remaining > 0;
       final strings = widget.core.strings;
-      final hint = ready ? strings.cardHoldAndCapture : _cardHint(strings, code);
+      final hint =
+          ready ? strings.cardHoldAndCapture : _cardHint(strings, code);
       if (_ready != ready || _hint != hint) {
         setState(() {
           _ready = ready;
@@ -293,7 +294,9 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
                     child: Column(
                       children: [
                         Text(
-                          widget.isFront ? strings.frontTitle : strings.backTitle,
+                          widget.isFront
+                              ? strings.frontTitle
+                              : strings.backTitle,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
@@ -305,7 +308,8 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
                         Text(
                           strings.cardSubtitle,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white, fontSize: 15),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 15),
                         ),
                       ],
                     ),

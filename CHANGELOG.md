@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 — 2026-11-25
+
+### Sửa
+- `EkycProxyClient.addFile` gửi đúng content type theo đuôi file (`.jpg`/`.jpeg` → `image/jpeg`, `.png` → `image/png`,
+  `.pdf` → `application/pdf`, còn lại gồm `.3dobj` → `application/octet-stream`). Trước đây luôn là
+  `application/octet-stream` nên server trả `400 FILE_CONTENT_TYPE_NOT_ALLOWED` khi nộp hồ sơ.
+
 ## 1.0.0 — 2026-11-24
 
 Bản đầu tiên. Gộp SDK eKYC 2.0 (`ekyc_platform` + `ekyc_sdk` + `ekyc_ui`) thành một Flutter plugin duy nhất

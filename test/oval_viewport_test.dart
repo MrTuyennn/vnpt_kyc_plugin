@@ -49,8 +49,8 @@ void main() {
   test('oval trên màn hình trùng viewport cũ khi preview và màn cùng 3:4', () {
     const size = Size(480, 640);
     final normalized = normalizedOvalOverlay(isFar: true);
-    final onScreen = ovalGuideOnScreen(
-        normalized: normalized, preview: size, screen: size);
+    final onScreen =
+        ovalGuideOnScreen(normalized: normalized, preview: size, screen: size);
     final old = projectOvalGuide(normalized, ovalViewport(size));
     expect(onScreen.left, closeTo(old.left, 0.01));
     expect(onScreen.right, closeTo(old.right, 0.01));

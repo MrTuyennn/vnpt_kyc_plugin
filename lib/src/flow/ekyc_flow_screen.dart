@@ -188,7 +188,8 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                       key: ValueKey('$path:${File(path).lastModifiedSync()}'),
                     )
                   : Text(strings.noImage,
-                      style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 12)),
             ),
           ),
         ],
@@ -352,10 +353,9 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                                   ),
                                 ),
                               ),
-                            _imageBox(strings.frontImage, art.frontFull,
-                                done[0]),
                             _imageBox(
-                                strings.backImage, art.backFull, done[1]),
+                                strings.frontImage, art.frontFull, done[0]),
+                            _imageBox(strings.backImage, art.backFull, done[1]),
                             if (_error != null)
                               Text(_error!,
                                   style:

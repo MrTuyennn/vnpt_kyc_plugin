@@ -6,6 +6,7 @@ abstract final class EkycSdkLog {
   }
 
   static void e(String tag, String message, [Object? e]) {
-    if (kDebugMode) debugPrint('[EkycSDK/$tag] ERROR: $message${e != null ? ' — $e' : ''}');
+    if (kDebugMode)
+      debugPrint('[EkycSDK/$tag] ERROR: $message${e != null ? ' — $e' : ''}');
   }
 }

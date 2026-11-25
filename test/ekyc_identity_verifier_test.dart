@@ -46,7 +46,8 @@ void main() {
                 200,
                 headers: _json);
           }
-          if (path.endsWith('addFile')) return _ok({'hash': 'h${calls.length}'});
+          if (path.endsWith('addFile'))
+            return _ok({'hash': 'h${calls.length}'});
           if (path.endsWith('liveness-3d') || path.endsWith('card/liveness')) {
             return _ok({'liveness': 'success'});
           }

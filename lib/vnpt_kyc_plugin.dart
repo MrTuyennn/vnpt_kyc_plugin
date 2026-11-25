@@ -3,7 +3,8 @@
 /// Chỉ những symbol dưới đây là public API; mọi thứ khác nằm trong `src/`.
 library vnpt_kyc_plugin;
 
-export 'src/api/ekyc_file_limits.dart' show ekycMaxImageBytes, isEkycFileTooLarge;
+export 'src/api/ekyc_file_limits.dart'
+    show ekycMaxImageBytes, isEkycFileTooLarge;
 export 'src/api/ekyc_identity_verifier.dart'
     show EkycIdentityVerifier, IdentityStep, IdentityStepStatus;
 export 'src/api/ekyc_session_init.dart' show EkycSessionInitRequest;

@@ -196,6 +196,7 @@ class _EkycOvalScannerState extends State<EkycOvalScanner> {
     }));
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     final camera = _controller;
@@ -304,7 +305,8 @@ class _EkycOvalScannerState extends State<EkycOvalScanner> {
                       child: Text(
                         strings.ovalSubtitle,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14),
                       ),
                     ),
                   ],

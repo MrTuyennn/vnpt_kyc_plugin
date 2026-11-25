@@ -10,8 +10,7 @@ void main() {
       () async {
     // Ảnh 1080x1920 hiển thị cover trên màn 430x820 → vùng thấy rộng 1080*(430/820*1920/1080).
     final image = img.Image(width: 1080, height: 1920);
-    final (crop, top, bottom) =
-        cropToCardGuide(image, const Size(430, 820));
+    final (crop, top, bottom) = cropToCardGuide(image, const Size(430, 820));
     const visibleWidth = 1920 * 430 / 820;
     expect(crop.width, closeTo(visibleWidth * cardGuideWidthRatio, 2));
     expect(crop.width / crop.height, closeTo(1.586, 0.02));

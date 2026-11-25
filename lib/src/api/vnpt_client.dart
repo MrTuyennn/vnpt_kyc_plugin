@@ -285,11 +285,17 @@ class VnptClient {
   }
 
   static const _plainFields = {
-    'type', 'crop_param', 'step_id', 'file', 'file_content_type', 'title',
+    'type',
+    'crop_param',
+    'step_id',
+    'file',
+    'file_content_type',
+    'title',
     'description',
   };
 
-  void _logRequest(Uri url, Map<String, String> headers, Map<String, Object?> body) {
+  void _logRequest(
+      Uri url, Map<String, String> headers, Map<String, Object?> body) {
     if (!kDebugMode) return;
     _log('POST ${url.scheme}://${url.authority}${url.path}');
     url.queryParameters.forEach((k, v) => _log('query.$k=${fingerprint(v)}'));

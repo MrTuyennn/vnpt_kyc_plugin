@@ -82,7 +82,8 @@ Future<FullIdentityArtifactPaths> _files(Directory d,
 
 void main() {
   late Directory dir;
-  setUp(() async => dir = await Directory.systemTemp.createTemp('vnpt_client_'));
+  setUp(
+      () async => dir = await Directory.systemTemp.createTemp('vnpt_client_'));
   tearDown(() => dir.delete(recursive: true));
 
   group('auth header', () {
@@ -90,8 +91,8 @@ void main() {
       expect(EkycAuthHeader.authorization('eyJabc'), 'Bearer eyJabc');
       expect(EkycAuthHeader.authorization('Bearer Bearer eyJabc'),
           'Bearer eyJabc');
-      expect(EkycAuthHeader.authorization(' "bearer  eyJabc" '),
-          'bearer eyJabc');
+      expect(
+          EkycAuthHeader.authorization(' "bearer  eyJabc" '), 'bearer eyJabc');
       expect(EkycAuthHeader.authorization('{"a":1}'), '{"a":1}');
       expect(EkycAuthHeader.authorization('opaque'), 'opaque');
       expect(EkycAuthHeader.authorization(''), '');
@@ -122,7 +123,10 @@ void main() {
         appId: 'b.id');
     expect(
         buildClientSession(
-            device: ios, sdkVersionLabel: '3.7.4', override: '', timestampMs: 9),
+            device: ios,
+            sdkVersionLabel: '3.7.4',
+            override: '',
+            timestampMs: 9),
         'IOS_iPhone_ios17.2_Simulator_3.7.4_idfv_9_b.id');
     expect(
         buildClientSession(
@@ -160,8 +164,8 @@ void main() {
       final (client, _) = _client(_cfg());
       expect(
           () => client.uploadFile('${dir.path}/none.jpg'),
-          throwsA(isA<VnptApiException>()
-              .having((e) => e.code, 'code', 'UPLOAD')));
+          throwsA(
+              isA<VnptApiException>().having((e) => e.code, 'code', 'UPLOAD')));
     });
 
     test('Authorization rỗng thì không gửi header', () async {
@@ -177,7 +181,8 @@ void main() {
       await client.ocrId(
           imgFrontHash: 'f', imgBackHash: 'b', cropParam: '0.3,0.3');
       final c = calls.single;
-      expect(c.url.toString(), 'https://api.test/ai/v1/ocr/id?challenge_code=11111');
+      expect(c.url.toString(),
+          'https://api.test/ai/v1/ocr/id?challenge_code=11111');
       expect(c.headers['mac-address'], 'TEST1');
       expect(c.headers['Content-Type'], contains('application/json'));
       expect(c.json, {
@@ -207,7 +212,8 @@ void main() {
   });
 
   group('liveness', () {
-    test('standard (checkLivenessFace=2), không flow: token + step_id', () async {
+    test('standard (checkLivenessFace=2), không flow: token + step_id',
+        () async {
       final (client, calls) = _client(_cfg());
       await client.liveness3d(farHash: 'a', nearHash: 'b', scan3dHash: 'c');
       final c = calls.single;
@@ -335,8 +341,8 @@ void main() {
       final (client, calls) = _client(_cfg());
       final r = await client.runFullIdentity(FullIdentityArtifactPaths());
       expect(r.errorCode, 'PIPELINE');
-      expect(r.errorMessage,
-          'Bước: Chuẩn bị dữ liệu\nLỗi: front path required');
+      expect(
+          r.errorMessage, 'Bước: Chuẩn bị dữ liệu\nLỗi: front path required');
       expect(calls, isEmpty);
     });
 
@@ -344,7 +350,8 @@ void main() {
       final client = VnptClient(
           config: _cfg(),
           clientSession: 's',
-          httpClient: MockClient((_) async => throw http.ClientException('down')));
+          httpClient:
+              MockClient((_) async => throw http.ClientException('down')));
       final r = await client.runFullIdentity(await _files(dir));
       expect(r.success, false);
       expect(r.errorCode, 'PIPELINE');
