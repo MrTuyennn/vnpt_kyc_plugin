@@ -116,6 +116,7 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
           true;
       if (captured && step != _Step.face) {
         await _evict(step == _Step.front ? art.frontFull : art.backFull);
+        await _evict(step == _Step.front ? art.frontCrop : art.backCrop);
       }
     } finally {
       if (backup != null && await backup.exists()) {
@@ -260,14 +261,14 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                     strings.frontTitle,
                     strings.cardHint,
                     done[0],
-                    art.frontFull
+                    art.frontCrop
                   ),
                   (
                     _Step.back,
                     strings.backTitle,
                     strings.cardHint,
                     done[1],
-                    art.backFull
+                    art.backCrop
                   ),
                   (
                     _Step.face,
@@ -354,8 +355,8 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                                 ),
                               ),
                             _imageBox(
-                                strings.frontImage, art.frontFull, done[0]),
-                            _imageBox(strings.backImage, art.backFull, done[1]),
+                                strings.frontImage, art.frontCrop, done[0]),
+                            _imageBox(strings.backImage, art.backCrop, done[1]),
                             if (_error != null)
                               Text(_error!,
                                   style:
