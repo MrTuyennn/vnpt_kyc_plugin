@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:vnpt_kyc_plugin/src/platform/platform.dart';
 import 'package:vnpt_kyc_plugin/src/core/core.dart';
+import 'package:vnpt_kyc_plugin/src/l10n/ekyc_strings.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:vnpt_kyc_plugin/src/ui/camera/camera_backdrop.dart';
 import 'package:vnpt_kyc_plugin/src/ui/camera/camera_frame_util.dart';
 import 'package:vnpt_kyc_plugin/src/ui/camera/camera_preview_stream.dart';
 import 'package:vnpt_kyc_plugin/src/ui/card_capture_image.dart';
@@ -43,7 +45,14 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
   bool _closing = false;
   final _previewClock = Stopwatch()..start();
   int? _lastValidMs;
-  String _hint = 'Đang mở camera…';
+
+  /// Kích thước màn hình (camera phủ kín): preview, crop và khung vẽ cùng dùng.
+  Size get _viewSize {
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    return view.physicalSize / view.devicePixelRatio;
+  }
+
+  late String _hint = widget.core.strings.cameraOpening;
   Timer? _readyExpiry;
 
   @override
@@ -66,7 +75,8 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
       if (!mounted || _closing) return;
       final camera = _camera;
       if (camera == null) {
-        setState(() => _hint = boot.userMessage ?? 'Không mở được camera.');
+        EkycLog.e('card', 'camera: ${boot.userMessage}');
+        setState(() => _hint = widget.core.strings.cameraUnavailable);
         return;
       }
       await camera.lockCaptureOrientation(DeviceOrientation.portraitUp);
@@ -80,16 +90,16 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
         minInterval: const Duration(milliseconds: 250),
         rotationDegrees: isIos ? 0 : camera.description.sensorOrientation,
         cropCard: true,
+        cardView: _viewSize,
       );
       await stream.start(_onFrame);
       if (mounted && !_closing) {
-        setState(() => _hint = 'Đặt giấy tờ vào khung');
+        setState(() => _hint = widget.core.strings.cardPlaceInFrame);
       }
     } catch (error, stack) {
       EkycLog.e('card', 'Không khởi động được camera', error, stack);
       if (mounted && !_closing) {
-        setState(
-            () => _hint = 'Không khởi động được camera. Hãy mở lại bước này.');
+        setState(() => _hint = widget.core.strings.cameraStartFailed);
       }
     }
   }
@@ -115,7 +125,8 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
       _readyExpiry?.cancel();
       final remaining = 1000 - (_previewClock.elapsedMilliseconds - frameMs);
       final ready = valid && remaining > 0;
-      final hint = ready ? 'Giữ yên rồi bấm chụp' : _cardHint(code);
+      final strings = widget.core.strings;
+      final hint = ready ? strings.cardHoldAndCapture : _cardHint(strings, code);
       if (_ready != ready || _hint != hint) {
         setState(() {
           _ready = ready;
@@ -157,7 +168,7 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
     setState(() {
       _capturing = true;
       _ready = false;
-      _hint = 'Đang kiểm tra ảnh chụp…';
+      _hint = widget.core.strings.cardChecking;
     });
     final work = _captureWork = _commit(camera);
     final saved = await work;
@@ -174,14 +185,14 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
   }
 
   Future<bool> _commit(CameraController camera) async {
-    var hint = 'Không chụp được ảnh. Hãy thử lại.';
+    var hint = widget.core.strings.cardCaptureFailed;
     try {
       await _stream?.stop();
       await _frameCheck;
       if (!mounted || _closing) return false;
       final jpeg = await captureStillJpeg(camera);
       if (jpeg != null && mounted && !_closing) {
-        final image = await prepareCardCapture(jpeg);
+        final image = await prepareCardCapture(jpeg, view: _viewSize);
         if (!mounted || _closing) return false;
         final code = await widget.core.commitCardCapture(
           image.full,
@@ -190,7 +201,7 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
           cropParam: image.cropParam,
         );
         if (code == MessageResult.cardValid) return true;
-        hint = _cardHint(code);
+        hint = _cardHint(widget.core.strings, code);
       }
     } catch (error, stack) {
       EkycLog.e('card', 'Không lưu được ảnh CCCD', error, stack);
@@ -205,8 +216,7 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
     } catch (error, stack) {
       EkycLog.e('card', 'Không mở lại được preview', error, stack);
       if (mounted && !_closing) {
-        setState(
-            () => _hint = 'Không mở lại được camera. Hãy mở lại bước này.');
+        setState(() => _hint = widget.core.strings.cameraReopenFailed);
       }
     }
     return false;
@@ -245,93 +255,115 @@ class _EkycCardScannerState extends State<EkycCardScanner> {
   @override
   Widget build(BuildContext context) {
     final camera = _camera;
-    final side = widget.isFront ? 'Mặt trước' : 'Mặt sau';
+    final strings = widget.core.strings;
     const surface = Color(0xFF161D25);
     final outline = _ready ? const Color(0xff00bd78) : const Color(0xffffbb32);
     return Scaffold(
       backgroundColor: surface,
-      appBar: AppBar(
-        backgroundColor: surface,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        title: Text('Căn Cước ${side.toLowerCase()}'),
-      ),
-      body: SafeArea(
-        top: false,
-        child: Column(
+      body: LayoutBuilder(builder: (context, constraints) {
+        // Camera phủ kín màn hình; khung thẻ nằm giữa, rộng 86% màn hình.
+        final guide = cardGuide(constraints.biggest);
+        return Stack(
+          fit: StackFit.expand,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-              child: Semantics(
-                liveRegion: true,
-                child: Text(
-                  _hint,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: outline,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-            Expanded(
-              child: LayoutBuilder(builder: (context, constraints) {
-                final viewport = ovalViewport(constraints.biggest);
-                final guide = cardGuide(viewport.size).shift(viewport.topLeft);
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (camera != null && camera.value.isInitialized)
-                      Positioned.fromRect(
-                        rect: viewport,
-                        child: ClipRect(
-                          child: FittedBox(
-                            fit: BoxFit.cover,
-                            child: SizedBox.fromSize(
-                              size: portraitPreviewSize(camera),
-                              child: CameraPreview(camera),
-                            ),
+            if (camera != null && camera.value.isInitialized)
+              CameraBackdrop(controller: camera),
+            CustomPaint(painter: _CardMask(guide, outline)),
+            SafeArea(
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 16,
+                    top: 8,
+                    child: Material(
+                      color: const Color(0x99161D25),
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        tooltip: strings.back,
+                        color: Colors.white,
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 24,
+                    right: 24,
+                    top: 64,
+                    child: Column(
+                      children: [
+                        Text(
+                          widget.isFront ? strings.frontTitle : strings.backTitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                    CustomPaint(painter: _CardMask(guide, outline)),
-                  ],
-                );
-              }),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    disabledBackgroundColor: Colors.white12,
-                    disabledForegroundColor: Colors.white54,
+                        const SizedBox(height: 8),
+                        Text(
+                          strings.cardSubtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 15),
+                        ),
+                      ],
+                    ),
                   ),
-                  onPressed: _ready && !_capturing ? _capture : null,
-                  icon: const Icon(Icons.photo_camera_outlined),
-                  label: Text(_capturing
-                      ? 'Đang xử lý…'
-                      : 'Chụp ${side.toLowerCase()}'),
-                ),
+                  Positioned(
+                    left: 24,
+                    right: 24,
+                    top: guide.bottom + 24 - MediaQuery.paddingOf(context).top,
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _hint,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: outline,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 20,
+                    right: 20,
+                    bottom: 20,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                        backgroundColor: const Color(0xffffbb32),
+                        foregroundColor: Colors.black,
+                        disabledBackgroundColor: Colors.white12,
+                        disabledForegroundColor: Colors.white54,
+                      ),
+                      onPressed: _ready && !_capturing ? _capture : null,
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: Text(_capturing
+                          ? strings.processing
+                          : strings.captureLabel(widget.isFront)),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
-      ),
+        );
+      }),
     );
   }
 }
 
-String _cardHint(int code) => switch (code) {
-      22 => 'Đổi góc để tránh ánh sáng phản chiếu',
-      27 => 'Ảnh chưa rõ. Giữ yên thẻ và camera',
-      28 => 'Đưa camera ra xa một chút',
-      29 => 'Đưa camera lại gần giấy tờ',
-      30 => 'Đặt thẻ phẳng và giữ camera thẳng',
-      23 || 24 || 25 || 26 => 'Đặt trọn bốn góc giấy tờ vào khung',
-      _ => 'Đặt giấy tờ vào khung',
+String _cardHint(EkycStrings s, int code) => switch (code) {
+      22 => s.cardGlare,
+      27 => s.cardBlurry,
+      28 => s.cardTooFar,
+      29 => s.cardTooNear,
+      30 => s.cardNotFlat,
+      23 || 24 || 25 || 26 => s.cardCorners,
+      _ => s.cardPlaceInFrame,
     };
 
 class _CardMask extends CustomPainter {
@@ -346,7 +378,7 @@ class _CardMask extends CustomPainter {
       ..fillType = PathFillType.evenOdd
       ..addRect(Offset.zero & size)
       ..addRRect(frame);
-    canvas.drawPath(mask, Paint()..color = const Color(0x99161D25));
+    canvas.drawPath(mask, Paint()..color = const Color(0x8C161D25));
     final paint = Paint()
       ..color = outline
       ..strokeWidth = 4

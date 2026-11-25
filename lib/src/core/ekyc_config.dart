@@ -1,3 +1,6 @@
+import 'dart:ui' show Locale;
+
+import 'package:vnpt_kyc_plugin/src/l10n/ekyc_strings.dart';
 import 'package:vnpt_kyc_plugin/src/platform/platform.dart';
 
 /// Cấu hình phiên eKYC: credential VNPT + cờ luồng.
@@ -26,6 +29,8 @@ class EkycConfig {
     this.enableWatermark = false,
     this.sdkVersionLabel = '3.7.4',
     this.macAddress = defaultMacAddress,
+    this.locale = const Locale('vi'),
+    this.strings,
   });
 
   /// OCR token mặc định (không watermark).
@@ -56,6 +61,14 @@ class EkycConfig {
   bool enableWatermark;
   String sdkVersionLabel;
   String macAddress;
+
+  /// Ngôn ngữ giao diện quét/luồng (`vi`, `en`; khác thì dùng `vi`).
+  Locale locale;
+
+  /// Chuỗi giao diện riêng; ghi đè hoàn toàn [locale] nếu khác `null`.
+  EkycStrings? strings;
+
+  EkycStrings get resolvedStrings => strings ?? EkycStrings.of(locale);
 
   bool get isValidForApi =>
       accessToken.isNotEmpty &&

@@ -61,6 +61,42 @@ Rect projectOvalGuide(Rect normalized, Rect viewport) => Rect.fromLTRB(
       viewport.top + normalized.bottom * viewport.height,
     );
 
+/// Vùng 3:4 giữa ảnh preview mà engine dùng làm hệ toạ độ cho oval
+/// (khớp `EkycOvalGeometry.letterboxInBitmap` bên native).
+Rect ovalRegionInPreview(Size preview) => Alignment.center.inscribe(
+      applyBoxFit(BoxFit.contain, ekycOvalReferenceSize, preview).destination,
+      Offset.zero & preview,
+    );
+
+/// Oval chuẩn hoá (theo vùng 3:4 của ảnh) → toạ độ màn hình khi preview phủ kín
+/// ([BoxFit.cover]). Oval vẽ trùng đúng vùng engine cắt, dù màn hình dài hay ngắn.
+Rect ovalGuideOnScreen({
+  required Rect normalized,
+  required Size preview,
+  required Size screen,
+}) {
+  final inImage = projectOvalGuide(normalized, ovalRegionInPreview(preview));
+  return previewRectToScreen(inImage, preview: preview, screen: screen);
+}
+
+/// Chiếu một rect trong toạ độ ảnh preview sang màn hình khi hiển thị [BoxFit.cover].
+Rect previewRectToScreen(
+  Rect rect, {
+  required Size preview,
+  required Size screen,
+}) {
+  final shown = applyBoxFit(BoxFit.cover, preview, screen);
+  final origin =
+      Alignment.center.inscribe(shown.source, Offset.zero & preview).topLeft;
+  final scale = screen.width / shown.source.width;
+  return Rect.fromLTRB(
+    (rect.left - origin.dx) * scale,
+    (rect.top - origin.dy) * scale,
+    (rect.right - origin.dx) * scale,
+    (rect.bottom - origin.dy) * scale,
+  );
+}
+
 /// Map a normalized rectangle onto a centered, aspect-preserving preview.
 Rect ovalRectOnView({
   required Rect normalized,

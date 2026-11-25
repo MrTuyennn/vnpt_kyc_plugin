@@ -45,4 +45,26 @@ void main() {
     expect(near.top, greaterThan(viewport.top));
     expect(near.bottom, lessThan(viewport.bottom));
   });
+
+  test('oval trên màn hình trùng viewport cũ khi preview và màn cùng 3:4', () {
+    const size = Size(480, 640);
+    final normalized = normalizedOvalOverlay(isFar: true);
+    final onScreen = ovalGuideOnScreen(
+        normalized: normalized, preview: size, screen: size);
+    final old = projectOvalGuide(normalized, ovalViewport(size));
+    expect(onScreen.left, closeTo(old.left, 0.01));
+    expect(onScreen.right, closeTo(old.right, 0.01));
+    expect(onScreen.top, closeTo(old.top, 0.01));
+    expect(onScreen.bottom, closeTo(old.bottom, 0.01));
+  });
+
+  test('màn cao: oval far vẫn nằm giữa màn hình', () {
+    final rect = ovalGuideOnScreen(
+      normalized: normalizedOvalOverlay(isFar: true),
+      preview: const Size(1080, 1920),
+      screen: const Size(430, 820),
+    );
+    expect(rect.center.dx, closeTo(215, 0.01));
+    expect(rect.center.dy, closeTo(410, 0.01));
+  });
 }

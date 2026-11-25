@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/painting.dart' show Size;
 
+import 'package:vnpt_kyc_plugin/src/ui/camera/camera_frame_util.dart';
 import 'package:vnpt_kyc_plugin/src/ui/camera/camera_image_jpeg.dart';
 import 'package:vnpt_kyc_plugin/src/ui/ekyc_log.dart';
 import 'package:vnpt_kyc_plugin/src/ui/camera/preview_frame.dart';
@@ -15,6 +17,7 @@ final class CameraPreviewStream {
     this.rotationDegrees = 0,
     this.mirrorHorizontally = false,
     this.cropCard = false,
+    this.cardView = ekycOvalReferenceSize,
   });
 
   final CameraController controller;
@@ -23,6 +26,7 @@ final class CameraPreviewStream {
   final int rotationDegrees;
   final bool mirrorHorizontally;
   final bool cropCard;
+  final Size cardView;
 
   bool _on = false;
   bool _busy = false;
@@ -66,6 +70,7 @@ final class CameraPreviewStream {
             rotationDegrees: rotationDegrees,
             mirrorHorizontally: mirrorHorizontally,
             cropCard: cropCard,
+            cardView: cardView,
           );
           final handler = _handler;
           if (frame != null && _on && handler != null) await handler(frame);

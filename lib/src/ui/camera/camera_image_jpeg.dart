@@ -1,5 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show Size;
+import 'package:vnpt_kyc_plugin/src/ui/camera/camera_frame_util.dart';
 import 'package:image/image.dart' as img;
 
 import 'package:vnpt_kyc_plugin/src/ui/card_capture_image.dart';
@@ -11,12 +13,29 @@ Future<PreviewFrame?> encodePreviewFrame(
   required int rotationDegrees,
   required bool mirrorHorizontally,
   bool cropCard = false,
+  Size cardView = ekycOvalReferenceSize,
 }) =>
-    compute(_encode,
-        (image, quality, rotationDegrees, mirrorHorizontally, cropCard));
+    compute(_encode, (
+      image,
+      quality,
+      rotationDegrees,
+      mirrorHorizontally,
+      cropCard,
+      cardView.width,
+      cardView.height,
+    ));
 
-PreviewFrame? _encode((CameraImage, int, int, bool, bool) input) {
-  final (image, quality, rotationDegrees, mirrorHorizontally, cropCard) = input;
+PreviewFrame? _encode(
+    (CameraImage, int, int, bool, bool, double, double) input) {
+  final (
+    image,
+    quality,
+    rotationDegrees,
+    mirrorHorizontally,
+    cropCard,
+    viewWidth,
+    viewHeight
+  ) = input;
   try {
     var pixels = _decode(image);
     if (pixels == null) return null;
@@ -26,7 +45,7 @@ PreviewFrame? _encode((CameraImage, int, int, bool, bool) input) {
     if (mirrorHorizontally) img.flipHorizontal(pixels);
     if (cropCard) {
       if (pixels.width >= pixels.height) return null;
-      pixels = cropToCardGuide(pixels).$1;
+      pixels = cropToCardGuide(pixels, Size(viewWidth, viewHeight)).$1;
     }
     return PreviewFrame(
       width: pixels.width,

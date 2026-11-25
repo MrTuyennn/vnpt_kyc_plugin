@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:vnpt_kyc_plugin/src/platform/platform.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:vnpt_kyc_plugin/src/ui/camera/camera_backdrop.dart';
 import 'package:vnpt_kyc_plugin/src/ui/camera/camera_frame_util.dart';
 import 'package:vnpt_kyc_plugin/src/ui/camera/camera_preview_stream.dart';
 import 'package:vnpt_kyc_plugin/src/ui/camera/ekyc_camera_boot.dart';
@@ -67,7 +69,8 @@ class _EkycOvalScannerState extends State<EkycOvalScanner> {
       if (!mounted) return;
       final camera = _controller;
       if (camera == null) {
-        setState(() => _error = boot.userMessage ?? 'Không mở được camera');
+        EkycLog.e('oval', 'camera: ${boot.userMessage}');
+        setState(() => _error = widget.core.strings.cameraUnavailable);
         return;
       }
       await camera.lockCaptureOrientation(DeviceOrientation.portraitUp);
@@ -99,7 +102,7 @@ class _EkycOvalScannerState extends State<EkycOvalScanner> {
       });
       if (mounted) setState(() {});
     } catch (error) {
-      _showError('Không khởi động được xác thực khuôn mặt.', error);
+      _showError(widget.core.strings.ovalStartFailed, error);
     }
   }
 
@@ -121,7 +124,7 @@ class _EkycOvalScannerState extends State<EkycOvalScanner> {
       );
       if (!mounted) return;
       if (code == MessageResult.timeExceed) {
-        _showError('Đã hết thời gian xác thực. Vui lòng mở lại camera.');
+        _showError(widget.core.strings.ovalTimeout);
         return;
       }
 
@@ -166,8 +169,7 @@ class _EkycOvalScannerState extends State<EkycOvalScanner> {
       widget.onCompleted?.call();
       if (mounted) navigator.pop(true);
     } catch (error) {
-      _showError(
-          'Không lưu được kết quả xác thực. Vui lòng mở lại camera.', error);
+      _showError(widget.core.strings.ovalSaveFailed, error);
     }
   }
 
@@ -194,108 +196,115 @@ class _EkycOvalScannerState extends State<EkycOvalScanner> {
     }));
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     final camera = _controller;
+    final strings = widget.core.strings;
     final isFar = _phase == OvalPhaseUi.far;
-    final instruction = faceOvalInstructionVi(_phase, widget.modeFaceOval);
     final feedback = _error ??
         (_saving
-            ? 'Đang lưu ảnh…'
+            ? strings.ovalSaving
             : _phase == OvalPhaseUi.transitionToNear
-                ? 'Tiến lại gần camera'
+                ? strings.ovalApproach
                 : camera == null
-                    ? 'Đang mở camera…'
-                    : faceOvalActionVi(
+                    ? strings.cameraOpening
+                    : faceOvalAction(
+                        strings,
                         _lastCode,
                         stable: _stable,
                         stableRequired: widget.stableFrames,
                       ));
     final fit = _lastCode == MessageResult.fit;
-    final primary = Theme.of(context).colorScheme.primary;
-    final border = fit ? Colors.lightGreenAccent : Colors.white;
+    // Cung xanh chạy quanh oval từ đỉnh theo chiều kim đồng hồ: mode 0 (xa + gần)
+    // pha xa chạy nửa vòng đầu, pha gần nửa vòng sau; mode 1/2 chạy trọn vòng.
+    final stableRatio =
+        fit ? (_stable / widget.stableFrames).clamp(0.0, 1.0) : 0.0;
+    final twoPhase = widget.modeFaceOval == 0;
+    final progress = switch (_phase) {
+      OvalPhaseUi.done => 1.0,
+      OvalPhaseUi.transitionToNear => 0.5,
+      OvalPhaseUi.far => twoPhase ? stableRatio * 0.5 : stableRatio,
+      OvalPhaseUi.near => twoPhase ? 0.5 + stableRatio * 0.5 : stableRatio,
+    };
+    final normalized = normalizedOvalOverlay(
+      isFar: isFar,
+      useIosGuide: defaultTargetPlatform == TargetPlatform.iOS,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFF161D25),
       body: LayoutBuilder(
         builder: (context, constraints) {
+          // Oval giữ nguyên như cũ: chiếu lên vùng 3:4 giữa màn hình.
           final viewport = ovalViewport(constraints.biggest);
+          final oval = projectOvalGuide(normalized, viewport);
           return Stack(
             fit: StackFit.expand,
             children: [
               if (camera != null && camera.value.isInitialized)
-                Positioned.fromRect(
-                  rect: viewport,
-                  child: ClipRect(
-                    child: FittedBox(
-                      fit: BoxFit.cover,
-                      child: SizedBox.fromSize(
-                        size: portraitPreviewSize(camera),
-                        child: CameraPreview(camera),
-                      ),
-                    ),
-                  ),
+                CameraBackdrop(
+                  controller: camera,
+                  ovalRegionWidthFitsScreen: true,
                 ),
               if (camera != null && _error == null)
                 _OvalGuide(
-                  viewport: viewport,
-                  normalized: normalizedOvalOverlay(
-                    isFar: isFar,
-                    useIosGuide: defaultTargetPlatform == TargetPlatform.iOS,
+                  project: (rect) => projectOvalGuide(rect, viewport),
+                  normalized: normalized,
+                  progress: progress,
+                ),
+              if (camera != null)
+                Positioned(
+                  top: oval.bottom + 24,
+                  left: 16,
+                  right: 16,
+                  child: Center(
+                    child: _StatusPill(
+                      text: feedback,
+                      state: _error != null
+                          ? _PillState.error
+                          : fit
+                              ? _PillState.ok
+                              : _PillState.hint,
+                    ),
                   ),
-                  border: border,
                 ),
               SafeArea(
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(left: 16, right: 4),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Xác thực khuôn mặt',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                              ),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Material(
+                          color: const Color(0x59000000),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => Navigator.of(context).pop(),
+                            child: const SizedBox(
+                              width: 40,
+                              height: 40,
+                              child: Icon(Icons.arrow_back,
+                                  color: Colors.white, size: 22),
                             ),
                           ),
-                          IconButton(
-                            tooltip: 'Đóng',
-                            color: Colors.white,
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      color: _error == null ? primary : const Color(0xFF8C3434),
-                      child: Text(
-                        feedback,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _error == null
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    const Spacer(),
+                    Text(
+                      strings.faceTitle,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                       child: Text(
-                        instruction,
+                        strings.ovalSubtitle,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
                       ),
                     ),
                   ],
@@ -309,18 +318,79 @@ class _EkycOvalScannerState extends State<EkycOvalScanner> {
   }
 }
 
+enum _PillState { ok, hint, error }
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.text, required this.state});
+
+  final String text;
+  final _PillState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, border, icon, iconColor) = switch (state) {
+      _PillState.ok => (
+          const Color(0xD91B4332),
+          const Color(0xFF2E8F62),
+          Icons.check_circle,
+          const Color(0xFF4ADE9A),
+        ),
+      _PillState.hint => (
+          const Color(0xD9262A2E),
+          const Color(0x4DFFFFFF),
+          Icons.info,
+          const Color(0xFFFFBB32),
+        ),
+      _PillState.error => (
+          const Color(0xD9552626),
+          const Color(0xFFB04A4A),
+          Icons.error,
+          const Color(0xFFFF8A80),
+        ),
+    };
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: iconColor, size: 18),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _OvalGuide extends StatelessWidget {
   const _OvalGuide({
-    required this.viewport,
+    required this.project,
     required this.normalized,
-    required this.border,
+    required this.progress,
   });
 
   static const transitionDuration = Duration(milliseconds: 500);
 
-  final Rect viewport;
+  final Rect Function(Rect normalized) project;
   final Rect normalized;
-  final Color border;
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
@@ -329,18 +399,20 @@ class _OvalGuide extends StatelessWidget {
       duration: transitionDuration,
       curve: Curves.easeInOut,
       builder: (context, rect, _) {
-        final oval = projectOvalGuide(rect!, viewport);
-        return CustomPaint(painter: _OvalMask(oval, border));
+        final oval = project(rect!);
+        return CustomPaint(painter: _OvalMask(oval, progress));
       },
     );
   }
 }
 
 class _OvalMask extends CustomPainter {
-  const _OvalMask(this.oval, this.border);
+  const _OvalMask(this.oval, this.progress);
 
   final Rect oval;
-  final Color border;
+  final double progress;
+
+  static const _stroke = 4.0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -348,17 +420,30 @@ class _OvalMask extends CustomPainter {
       ..fillType = PathFillType.evenOdd
       ..addRect(Offset.zero & size)
       ..addOval(oval);
-    canvas.drawPath(outside, Paint()..color = const Color(0x80161D25));
+    canvas.drawPath(outside, Paint()..color = const Color(0x99161D25));
     canvas.drawOval(
       oval,
       Paint()
-        ..color = border
+        ..color = const Color(0x99B8BDC2)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
+        ..strokeWidth = _stroke,
     );
+    if (progress > 0) {
+      canvas.drawArc(
+        oval,
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        Paint()
+          ..color = const Color(0xFF34B873)
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = _stroke,
+      );
+    }
   }
 
   @override
   bool shouldRepaint(_OvalMask oldDelegate) =>
-      oldDelegate.oval != oval || oldDelegate.border != border;
+      oldDelegate.oval != oval || oldDelegate.progress != progress;
 }

@@ -1,32 +1,34 @@
+import 'package:vnpt_kyc_plugin/src/l10n/ekyc_strings.dart';
 import 'package:vnpt_kyc_plugin/src/platform/platform.dart';
 
 import 'package:vnpt_kyc_plugin/src/ui/oval_ux_models.dart';
 
-String faceOvalInstructionVi(OvalPhaseUi phase, int modeFaceOval) {
+String faceOvalInstruction(
+    EkycStrings s, OvalPhaseUi phase, int modeFaceOval) {
   return switch (phase) {
-    OvalPhaseUi.far => modeFaceOval == 0 ? 'Bước 1/2 · Mặt xa' : 'Mặt xa',
+    OvalPhaseUi.far => modeFaceOval == 0 ? s.ovalStepFar : s.ovalFar,
     OvalPhaseUi.near ||
     OvalPhaseUi.transitionToNear =>
-      modeFaceOval == 0 ? 'Bước 2/2 · Mặt gần' : 'Mặt gần',
-    OvalPhaseUi.done => 'Đã chụp xong',
+      modeFaceOval == 0 ? s.ovalStepNear : s.ovalNear,
+    OvalPhaseUi.done => s.ovalDone,
   };
 }
 
-String faceOvalActionVi(int code,
+String faceOvalAction(EkycStrings s, int code,
     {required int stable, required int stableRequired}) {
   return switch (code) {
-    MessageResult.fit => stable >= stableRequired ? 'Đang chụp…' : 'Giữ yên',
-    MessageResult.tooFar => 'Gần hơn nữa',
-    MessageResult.tooNear => 'Lùi xa một chút',
-    MessageResult.notStraight => 'Nhìn thẳng vào camera',
+    MessageResult.fit => stable >= stableRequired ? s.ovalCapturing : s.ovalHoldStill,
+    MessageResult.tooFar => s.ovalCloser,
+    MessageResult.tooNear => s.ovalFurther,
+    MessageResult.notStraight => s.ovalLookStraight,
     MessageResult.awayFromLeft ||
     MessageResult.awayFromTop ||
     MessageResult.awayFromRight ||
     MessageResult.awayFromBottom ||
     MessageResult.awayFromCenter =>
-      'Đưa mặt vào giữa khung oval',
-    MessageResult.manyFaces => 'Chỉ để một khuôn mặt trong khung',
-    _ => 'Đưa mặt vào khung oval',
+      s.ovalCenter,
+    MessageResult.manyFaces => s.ovalOneFace,
+    _ => s.ovalPutInFrame,
   };
 }
 

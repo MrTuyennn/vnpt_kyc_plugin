@@ -7,9 +7,12 @@ import 'package:image/image.dart' as img;
 
 import 'package:vnpt_kyc_plugin/src/ui/camera/camera_frame_util.dart';
 
+/// Khung thẻ rộng bao nhiêu so với chiều ngang vùng nhìn thấy.
+const cardGuideWidthRatio = 0.86;
+
 Rect cardGuide(Size viewportSize) {
   const ratio = 1.586;
-  final width = viewportSize.width * 0.86;
+  final width = viewportSize.width * cardGuideWidthRatio;
   return Rect.fromCenter(
     center: viewportSize.center(Offset.zero),
     width: width,
@@ -23,17 +26,22 @@ typedef CardCaptureImage = ({
   String cropParam,
 });
 
-Future<CardCaptureImage> prepareCardCapture(Uint8List jpeg) =>
-    compute(_prepare, jpeg);
+/// [view] là kích thước vùng hiển thị preview trên màn hình (camera phủ kín,
+/// [BoxFit.cover]); khung thẻ là 86% chiều ngang vùng đó, nằm giữa.
+Future<CardCaptureImage> prepareCardCapture(Uint8List jpeg,
+        {Size view = ekycOvalReferenceSize}) =>
+    compute(_prepare, (jpeg, view.width, view.height));
 
-CardCaptureImage _prepare(Uint8List jpeg) {
+CardCaptureImage _prepare((Uint8List, double, double) input) {
+  final (jpeg, viewWidth, viewHeight) = input;
   final decoded = img.decodeJpg(jpeg);
   if (decoded == null) throw const FormatException('Invalid card JPEG');
   final orientation = decoded.exif.imageIfd.orientation;
   final upright = orientation == null || orientation == 1
       ? decoded
       : img.bakeOrientation(decoded);
-  final (crop, top, bottom) = cropToCardGuide(upright);
+  final (crop, top, bottom) =
+      cropToCardGuide(upright, Size(viewWidth, viewHeight));
   // VNPT's crop_param describes the top/bottom margins in the full image.
   final topRatio = (top / upright.height).toStringAsFixed(2);
   final bottomRatio =
@@ -47,11 +55,12 @@ CardCaptureImage _prepare(Uint8List jpeg) {
   );
 }
 
-(img.Image, int, int) cropToCardGuide(img.Image upright) {
+(img.Image, int, int) cropToCardGuide(img.Image upright,
+    [Size view = ekycOvalReferenceSize]) {
   final size = Size(upright.width.toDouble(), upright.height.toDouble());
-  // The preview center-crops the sensor to this same portrait aspect ratio.
+  // Preview center-crop (cover) cảm biến theo tỉ lệ của [view].
   final visible = Alignment.center.inscribe(
-    applyBoxFit(BoxFit.cover, size, ekycOvalReferenceSize).source,
+    applyBoxFit(BoxFit.cover, size, view).source,
     Offset.zero & size,
   );
   final rect = cardGuide(visible.size).shift(visible.topLeft);

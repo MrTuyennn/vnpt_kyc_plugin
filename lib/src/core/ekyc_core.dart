@@ -10,6 +10,7 @@ import 'package:vnpt_kyc_plugin/src/api/vnpt_client.dart';
 import 'package:vnpt_kyc_plugin/src/core/ekyc_config.dart';
 import 'package:vnpt_kyc_plugin/src/core/ekyc_sdk_log.dart';
 import 'package:vnpt_kyc_plugin/src/core/ekyc_session_artifacts.dart';
+import 'package:vnpt_kyc_plugin/src/l10n/ekyc_strings.dart';
 import 'package:vnpt_kyc_plugin/src/core/pipeline_models.dart';
 import 'package:vnpt_kyc_plugin/src/core/vnpt_identity_response.dart';
 import 'package:vnpt_kyc_plugin/src/platform/platform.dart';
@@ -43,6 +44,9 @@ class EkycCore {
   Stream<int> get faceHints => _faceHints.stream;
   EkycSessionArtifacts? get artifacts => _artifacts;
   String get faceLogText => _faceLog.toString();
+
+  /// Chuỗi giao diện theo `EkycConfig.locale` / `strings` (mặc định tiếng Việt).
+  EkycStrings get strings => _config?.resolvedStrings ?? EkycStrings.vi;
 
   Future<void> configure(EkycConfig store) async {
     _config = store;

@@ -6,7 +6,7 @@ import 'package:vnpt_kyc_plugin/src/core/ekyc_config.dart';
 import 'package:vnpt_kyc_plugin/src/core/ekyc_core.dart';
 import 'package:vnpt_kyc_plugin/src/core/ekyc_session_artifacts.dart';
 import 'package:vnpt_kyc_plugin/src/core/pipeline_models.dart';
-import 'package:vnpt_kyc_plugin/src/l10n/strings_vi.dart';
+import 'package:vnpt_kyc_plugin/src/l10n/ekyc_strings.dart';
 import 'package:vnpt_kyc_plugin/src/ui/ekyc_card_scanner.dart';
 import 'package:vnpt_kyc_plugin/src/ui/ekyc_oval_scanner.dart';
 
@@ -52,6 +52,8 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
   }
 
   EkycSessionArtifacts get _art => widget.core.artifacts!;
+
+  EkycStrings get strings => widget.core.strings;
 
   List<String> _faceFiles(EkycSessionArtifacts art) => [
         art.farPreview,
@@ -133,7 +135,7 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
 
   Future<void> _submit() async {
     if (!widget.config.isValidForApi) {
-      setState(() => _error = EkycStringsVi.missingConfig);
+      setState(() => _error = strings.missingConfig);
       return;
     }
     setState(() {
@@ -150,10 +152,79 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
       }
       setState(() => _error = result.errorMessage);
     } catch (_) {
-      if (mounted) setState(() => _error = EkycStringsVi.noResult);
+      if (mounted) setState(() => _error = strings.noResult);
     } finally {
       if (mounted) setState(() => _working = false);
     }
+  }
+
+  /// Ô xem ảnh đầy đủ; chạm để mở toàn màn hình (zoom được).
+  Widget _imageBox(String label, String path, bool exists) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          const SizedBox(height: 5),
+          InkWell(
+            onTap: exists ? () => _showFull(label, path) : null,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 200,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: const Color(0xff383a3d),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: exists
+                  ? Image.file(
+                      File(path),
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                      height: double.infinity,
+                      key: ValueKey('$path:${File(path).lastModifiedSync()}'),
+                    )
+                  : Text(strings.noImage,
+                      style: const TextStyle(color: Colors.white38, fontSize: 12)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFull(String title, String path) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: InteractiveViewer(
+                maxScale: 5,
+                child:
+                    Center(child: Image.file(File(path), fit: BoxFit.contain)),
+              ),
+            ),
+            SafeArea(
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(dialogContext),
+                  ),
+                  Text(title),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -176,7 +247,7 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
           appBar: AppBar(
             backgroundColor: surface,
             centerTitle: true,
-            title: const Text(EkycStringsVi.flowTitle),
+            title: Text(strings.flowTitle),
           ),
           body: SafeArea(
             child: Builder(
@@ -185,22 +256,22 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                 final rows = <(_Step, String, String, bool, String)>[
                   (
                     _Step.front,
-                    EkycStringsVi.frontTitle,
-                    EkycStringsVi.cardHint,
+                    strings.frontTitle,
+                    strings.cardHint,
                     done[0],
                     art.frontFull
                   ),
                   (
                     _Step.back,
-                    EkycStringsVi.backTitle,
-                    EkycStringsVi.cardHint,
+                    strings.backTitle,
+                    strings.cardHint,
                     done[1],
                     art.backFull
                   ),
                   (
                     _Step.face,
-                    EkycStringsVi.faceTitle,
-                    EkycStringsVi.faceHint,
+                    strings.faceTitle,
+                    strings.faceHint,
                     done[2],
                     art.nearPreview
                   ),
@@ -260,7 +331,7 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                                               const SizedBox(height: 4),
                                               Text(
                                                 row.$4
-                                                    ? EkycStringsVi.retake
+                                                    ? strings.retake
                                                     : row.$3,
                                                 style: const TextStyle(
                                                     color: Colors.white60,
@@ -281,6 +352,10 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                                   ),
                                 ),
                               ),
+                            _imageBox(strings.frontImage, art.frontFull,
+                                done[0]),
+                            _imageBox(
+                                strings.backImage, art.backFull, done[1]),
                             if (_error != null)
                               Text(_error!,
                                   style:
@@ -302,7 +377,7 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                                   ? null
                                   : () =>
                                       Navigator.of(context).pop(_lastResult),
-                              child: const Text(EkycStringsVi.back),
+                              child: Text(strings.back),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -311,7 +386,7 @@ class _EkycFlowScreenState extends State<EkycFlowScreen> {
                               onPressed: !_working && done.every((e) => e)
                                   ? _submit
                                   : null,
-                              child: const Text(EkycStringsVi.next),
+                              child: Text(strings.next),
                             ),
                           ),
                         ],
